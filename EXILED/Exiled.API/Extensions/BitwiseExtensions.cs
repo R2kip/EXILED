@@ -75,5 +75,21 @@ namespace Exiled.API.Extensions
 
             return (flagValue & valueValue) == valueValue;
         }
+
+        /// <summary>
+        /// Checks if any of the specified values are present in flag.
+        /// </summary>
+        /// <param name="flag">Flag to check.</param>
+        /// <param name="value">Value(s) to check in flag.</param>
+        /// <typeparam name="T">The type of the enum.</typeparam>
+        /// <returns><see langword="true"/> if any value is present in flag. Otherwise, <see langword="false"/>.</returns>
+        public static bool HasAnyFlagFast<T>(this T flag, T value)
+            where T : Enum
+        {
+            long flagValue = Convert.ToInt64(flag);
+            long valueValue = Convert.ToInt64(value);
+        
+            return (flagValue & valueValue) != 0;
+        }
     }
 }
