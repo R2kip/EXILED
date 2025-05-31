@@ -37,33 +37,33 @@ namespace Exiled.Events.Patches.Events.Item
 
             LocalBuilder ev = generator.DeclareLocal(typeof(ChargingJailbirdEventArgs));
 
-            Label skipLabel = generator.DefineLabel();
+            Label continueLabel = generator.DefineLabel();
 
             const int offset = -2;
             int index = newInstructions.FindIndex(i => i.Calls(Method(typeof(Stopwatch), nameof(Stopwatch.Start)))) + offset;
 
-            List<Label> labels = newInstructions[index].labels;
+            List<Label> labels = newInstructions[index].ExtractLabels();
+
+            newInstructions[index].WithLabels(continueLabel);
 
             newInstructions.InsertRange(index, new CodeInstruction[]
             {
-                new CodeInstruction(OpCodes.Nop).WithLabels(labels),
-
                 // ev = new ChargingJailbirdEventArgs(this.Owner, this, true)
-                new (OpCodes.Ldarg_0),
+                new CodeInstruction(OpCodes.Ldarg_0).WithLabels(labels),
                 new (OpCodes.Callvirt, PropertyGetter(typeof(JailbirdItem), nameof(JailbirdItem.Owner))),
                 new (OpCodes.Ldarg_0),
                 new (OpCodes.Ldc_I4_1),
                 new (OpCodes.Newobj, GetDeclaredConstructors(typeof(ChargingJailbirdEventArgs))[0]),
+                new (OpCodes.Dup),
+                new (OpCodes.Dup),
                 new (OpCodes.Stloc_S, ev),
 
                 // Handlers.Item.OnChargingJailbird(ev)
-                new (OpCodes.Ldloc_S, ev),
                 new (OpCodes.Call, Method(typeof(Handlers.Item), nameof(Handlers.Item.OnChargingJailbird))),
 
-                // if (ev.IsAllowed) goto skipLabel
-                new (OpCodes.Ldloc_S, ev),
+                // if (ev.IsAllowed) goto continueLabel
                 new (OpCodes.Callvirt, PropertyGetter(typeof(ChargingJailbirdEventArgs), nameof(ChargingJailbirdEventArgs.IsAllowed))),
-                new (OpCodes.Brtrue_S, skipLabel),
+                new (OpCodes.Brtrue_S, continueLabel),
 
                 // this.SendRpc(JailbirdMessageType.ChargeFailed, null)
                 new (OpCodes.Ldarg_0),
@@ -90,8 +90,7 @@ namespace Exiled.Events.Patches.Events.Item
                 // return
                 new (OpCodes.Ret),
 
-                // skipLabel:
-                new CodeInstruction(OpCodes.Nop).WithLabels(skipLabel),
+                // continueLabel:
             });
 
             foreach (CodeInstruction instruction in newInstructions)

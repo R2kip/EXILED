@@ -41,10 +41,10 @@ namespace Exiled.Events.Patches.Events.Item
             // remove "this._attackTriggered = true"
             newInstructions.RemoveRange(index, 3);
 
+            newInstructions[index].WithLabels(labels);
+
             newInstructions.InsertRange(index, new CodeInstruction[]
             {
-                new CodeInstruction(OpCodes.Nop).WithLabels(labels),
-
                 // ev = new SwingingEventArgs(this.Owner, this, true)
                 new (OpCodes.Ldarg_0),
                 new (OpCodes.Callvirt, PropertyGetter(typeof(JailbirdItem), nameof(JailbirdItem.Owner))),
@@ -57,7 +57,7 @@ namespace Exiled.Events.Patches.Events.Item
                 // Handlers.Item.OnSwinging(ev)
                 new (OpCodes.Call, Method(typeof(Handlers.Item), nameof(Handlers.Item.OnSwinging))),
 
-                // this._attackTriggered = ev.IsAllowed
+                // this._attackTriggered = ev.CanHurt
                 new (OpCodes.Ldarg_0),
                 new (OpCodes.Ldloc_S, ev),
                 new (OpCodes.Callvirt, PropertyGetter(typeof(SwingingJailbirdEventArgs), nameof(SwingingJailbirdEventArgs.CanHurt))),

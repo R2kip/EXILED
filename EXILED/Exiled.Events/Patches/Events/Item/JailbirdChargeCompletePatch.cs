@@ -37,10 +37,12 @@ namespace Exiled.Events.Patches.Events.Item
 
             LocalBuilder ev = generator.DeclareLocal(typeof(JailbirdChargeCompleteEventArgs));
 
-            Label skipLabel = generator.DefineLabel();
+            Label continueLabel = generator.DefineLabel();
 
             const int offset = 1;
             int index = newInstructions.FindLastIndex(i => i.Calls(Method(typeof(Stopwatch), nameof(Stopwatch.Reset)))) + offset;
+
+            newInstructions[index].WithLabels(continueLabel);
 
             newInstructions.InsertRange(index, new CodeInstruction[]
             {
@@ -50,16 +52,16 @@ namespace Exiled.Events.Patches.Events.Item
                 new (OpCodes.Ldarg_0),
                 new (OpCodes.Ldc_I4_1),
                 new (OpCodes.Newobj, GetDeclaredConstructors(typeof(JailbirdChargeCompleteEventArgs))[0]),
+                new (OpCodes.Dup),
+                new (OpCodes.Dup),
                 new (OpCodes.Stloc_S, ev),
 
                 // Handlers.Item.OnJailbirdChargeComplete(ev)
-                new (OpCodes.Ldloc_S, ev),
                 new (OpCodes.Call, Method(typeof(Handlers.Item), nameof(Handlers.Item.OnJailbirdChargeComplete))),
 
-                // if (ev.IsAllowed) goto skipLabel
-                new (OpCodes.Ldloc_S, ev),
+                // if (ev.IsAllowed) goto continueLabel
                 new (OpCodes.Callvirt, PropertyGetter(typeof(JailbirdChargeCompleteEventArgs), nameof(JailbirdChargeCompleteEventArgs.IsAllowed))),
-                new (OpCodes.Brtrue_S, skipLabel),
+                new (OpCodes.Brtrue_S, continueLabel),
 
                 // this.SendRpc(JailbirdMessageType.ChargeFailed, null)
                 new (OpCodes.Ldarg_0),
@@ -86,8 +88,7 @@ namespace Exiled.Events.Patches.Events.Item
                 // return
                 new (OpCodes.Ret),
 
-                // skipLabel:
-                new CodeInstruction(OpCodes.Nop).WithLabels(skipLabel),
+                // continueLabel:
             });
 
             foreach (CodeInstruction instruction in newInstructions)
