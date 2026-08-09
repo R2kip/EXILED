@@ -22,6 +22,7 @@ namespace Exiled.API.Features.Items
     using InventorySystem.Items.Firearms.Ammo;
     using InventorySystem.Items.Jailbird;
     using InventorySystem.Items.Keycards;
+    using InventorySystem.Items.MarshmallowMan;
     using InventorySystem.Items.MicroHID;
     using InventorySystem.Items.Pickups;
     using InventorySystem.Items.Radio;
@@ -33,6 +34,7 @@ namespace Exiled.API.Features.Items
     using InventorySystem.Items.Usables.Scp1576;
     using InventorySystem.Items.Usables.Scp244;
     using InventorySystem.Items.Usables.Scp330;
+    using NetworkManagerUtils.Dummies;
     using UnityEngine;
 
     using BaseConsumable = InventorySystem.Items.Usables.Consumable;
@@ -190,6 +192,12 @@ namespace Exiled.API.Features.Items
         public Player Owner => Player.Get(Base.Owner) ?? Server.Host;
 
         /// <summary>
+        /// Gets the emulator for dummy actions if this item inherits <see cref="AutosyncItem"/>.
+        /// </summary>
+        /// <remarks>Returns null if this item does not inherit <see cref="AutosyncItem"/>.</remarks>
+        public DummyKeyEmulator DummyEmulator => (Base as AutosyncItem)?.DummyEmulator;
+
+        /// <summary>
         /// Gets or sets a reason for adding this item to the inventory.
         /// </summary>
         public ItemAddReason AddReason
@@ -260,6 +268,7 @@ namespace Exiled.API.Features.Items
                     _ => new Throwable(throwable),
                 },
                 Scp1509Item scp1509 => new Scp1509(scp1509),
+                MarshmallowItem marshmallow => new Marshmallow(marshmallow),
                 _ => new(itemBase),
             };
         }
@@ -364,6 +373,7 @@ namespace Exiled.API.Features.Items
                 _ => new Throwable(type, owner),
             },
             Scp1509Item => new Scp1509(),
+            MarshmallowItem => new Marshmallow(type, owner),
             _ => new(type),
         };
 

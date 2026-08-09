@@ -15,7 +15,9 @@ namespace Exiled.API.Features
     using Exiled.API.Extensions;
     using Exiled.API.Interfaces;
     using MapGeneration;
+    using PlayerRoles.PlayableScps.Scp079;
     using PlayerRoles.PlayableScps.Scp079.Cameras;
+    using PlayerRoles.PlayableScps.Scp079.GUI;
     using UnityEngine;
 
     using CameraType = Enums.CameraType;
@@ -208,6 +210,11 @@ namespace Exiled.API.Features
         public Transform Transform => Base.transform;
 
         /// <summary>
+        /// Gets a value indicating whether the Camera is the Main of it's Room.
+        /// </summary>
+        public bool IsMain => Base.IsMain;
+
+        /// <summary>
         /// Gets the camera's name.
         /// </summary>
         public string Name => Base.Label;
@@ -272,14 +279,52 @@ namespace Exiled.API.Features
         /// </summary>
         /// <param name="camera079">The base <see cref="Scp079Camera"/>.</param>
         /// <returns>A <see cref="Camera"/> or <see langword="null"/> if not found.</returns>
-        public static Camera Get(Scp079Camera camera079) => camera079 != null ? Camera079ToCamera.TryGetValue(camera079, out Camera camera) ? camera : new(camera079) : null;
+        public static Camera Get(Scp079Camera camera079)
+        {
+            if (camera079 == null)
+                return null;
+
+            if (Camera079ToCamera.TryGetValue(camera079, out Camera camera))
+                return camera;
+
+            return new(camera079);
+        }
+
+        /// <summary>
+        /// Gets the <see cref="Camera"/> belonging to the <see cref="UnityEngine.GameObject"/>, if any.
+        /// </summary>
+        /// <param name="gameObject">The base <see cref="UnityEngine.GameObject"/>.</param>
+        /// <returns>A <see cref="Camera"/> or <see langword="null"/> if not found.</returns>
+        public static Camera Get(GameObject gameObject) => !gameObject ? null : Get(gameObject.GetComponentInParent<Scp079Camera>(false));
+
+        /// <summary>
+        /// Gets the <see cref="Camera"/> near this <see cref="Generator"/>, if any.
+        /// </summary>
+        /// <param name="generator">The camera where gene <see cref="Generator"/>.</param>
+        /// <returns>A <see cref="Camera"/> or <see langword="null"/> if not found.</returns>
+        public static Camera Get(Generator generator) => generator == null ? null : Get(Scp079GeneratorNotification.GetGeneratorCamera(generator.Base));
+
+        /// <summary>
+        /// Gets the <see cref="Camera"/> the best camera nearest and same room <see cref="Vector3"/>, if any.
+        /// </summary>
+        /// <param name="position">The camera where gene <see cref="Vector3"/>.</param>
+        /// <returns>A <see cref="Camera"/> or <see langword="null"/> if not found.</returns>
+        public static Camera Get(Vector3 position) => Get(Scp079ScannerNotification.GetBestCamera(position));
 
         /// <summary>
         /// Gets a <see cref="Camera"/> given the specified <paramref name="cameraId"/>.
         /// </summary>
         /// <param name="cameraId">The camera id to be searched for.</param>
         /// <returns>The <see cref="Camera"/> with the given id or <see langword="null"/> if not found.</returns>
-        public static Camera Get(uint cameraId) => List.FirstOrDefault(camera => camera.Id == cameraId);
+        public static Camera Get(ushort cameraId) => Scp079InteractableBase.TryGetInteractable(cameraId, out Scp079InteractableBase scp079) ? Get(scp079.gameObject) : null;
+
+        /// <summary>
+        /// Gets a <see cref="Camera"/> given the specified <paramref name="cameraId"/>.
+        /// </summary>
+        /// <param name="cameraId">The camera id to be searched for.</param>
+        /// <returns>The <see cref="Camera"/> with the given id or <see langword="null"/> if not found.</returns>
+        [Obsolete("use Ushort instead of Uint", true)]
+        public static Camera Get(uint cameraId) => Get((ushort)cameraId);
 
         /// <summary>
         /// Gets a <see cref="Camera"/> given the specified <paramref name="cameraName"/>.
@@ -319,11 +364,28 @@ namespace Exiled.API.Features
         public static bool TryGet(Scp079Camera camera, out Camera result) => (result = Get(camera)) != null;
 
         /// <summary>
+        /// Gets the <see cref="Camera"/> belonging to the <see cref="Scp079Camera"/>, if any.
+        /// </summary>
+        /// <param name="gameObject">The <see cref="GameObject"/> of the camera.</param>
+        /// <param name="result">The instance of <see cref="Camera"/> which <see cref="Scp079Camera"/> base.</param>
+        /// <returns><see langword="true"/> if <see cref="Camera"/> is not <see langword="null"/>, or <see langword="false"/> if <see cref="Camera"/> is <see langword="null"/>.</returns>
+        public static bool TryGet(GameObject gameObject, out Camera result) => (result = Get(gameObject)) != null;
+
+        /// <summary>
         /// Gets a <see cref="Camera"/> given the specified <paramref name="cameraId"/>.
         /// </summary>
         /// <param name="cameraId">The id camera to be shearch.</param>
         /// <param name="result">the result of <see cref="Camera"/>, if <paramref name="cameraId"/> is valid.</param>
         /// <returns><see langword="true"/> if <see cref="Camera"/> is not <see langword="null"/>, or <see langword="false"/> if <see cref="Camera"/> is <see langword="null"/>.</returns>
+        public static bool TryGet(ushort cameraId, out Camera result) => (result = Get(cameraId)) != null;
+
+        /// <summary>
+        /// Gets a <see cref="Camera"/> given the specified <paramref name="cameraId"/>.
+        /// </summary>
+        /// <param name="cameraId">The id camera to be shearch.</param>
+        /// <param name="result">the result of <see cref="Camera"/>, if <paramref name="cameraId"/> is valid.</param>
+        /// <returns><see langword="true"/> if <see cref="Camera"/> is not <see langword="null"/>, or <see langword="false"/> if <see cref="Camera"/> is <see langword="null"/>.</returns>
+        [Obsolete("use Ushort instead of Uint", true)]
         public static bool TryGet(uint cameraId, out Camera result) => (result = Get(cameraId)) != null;
 
         /// <summary>

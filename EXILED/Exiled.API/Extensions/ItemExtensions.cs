@@ -32,7 +32,7 @@ namespace Exiled.API.Extensions
         /// </summary>
         /// <param name="item">The item to be checked.</param>
         /// <returns>Returns whether the <see cref="ItemType"/> is an ammo.</returns>
-        public static bool IsAmmo(this ItemType item) => item.GetAmmoType() is not AmmoType.None;
+        public static bool IsAmmo(this ItemType item) => item.GetAmmoType() is not(AmmoType.None or AmmoType.Custom);
 
         /// <summary>
         /// Check if an <see cref="ItemType">item</see> is a weapon.
@@ -167,7 +167,8 @@ namespace Exiled.API.Extensions
             ItemType.Ammo762x39 => AmmoType.Nato762,
             ItemType.Ammo12gauge => AmmoType.Ammo12Gauge,
             ItemType.Ammo44cal => AmmoType.Ammo44Cal,
-            _ => AmmoType.None,
+            ItemType.None => AmmoType.None,
+            _ => AmmoType.Custom,
         };
 
         /// <summary>
@@ -192,6 +193,21 @@ namespace Exiled.API.Extensions
             ItemType.ParticleDisruptor => FirearmType.ParticleDisruptor,
             ItemType.GunSCP127 => FirearmType.Scp127,
             _ => FirearmType.None,
+        };
+
+        /// <summary>
+        /// Converts a valid firearm <see cref="ItemType"/> into a <see cref="WearableElementType"/>.
+        /// </summary>
+        /// <param name="type">The <see cref="ItemType"/> to convert.</param>
+        /// <returns>The firearm type of the given item.</returns>
+        public static WearableElementType GetWearableElementType(this ItemType type) => type switch
+        {
+            ItemType.SCP268 => WearableElementType.Scp268Hat,
+            ItemType.ArmorLight => WearableElementType.ArmorLight,
+            ItemType.ArmorCombat => WearableElementType.ArmorCombat,
+            ItemType.ArmorHeavy => WearableElementType.ArmorHeavy,
+            ItemType.SCP1344 => WearableElementType.Scp1344Goggles,
+            _ => WearableElementType.None,
         };
 
         /// <summary>

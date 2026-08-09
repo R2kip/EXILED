@@ -28,19 +28,24 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@main
 
-    - run: dotnet tool update -g docfx
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@main
+      with:
+        dotnet-version: '10.0.x'
 
-    - name: Setup .NET Core SDK
-      uses: actions/setup-dotnet@v4.0.1
+    - name: Install/Update docfx tool
+      shell: pwsh
+      run: |
+        dotnet tool update -g docfx || dotnet tool install -g docfx
 
     - name: Setup Nuget
-      uses: nuget/setup-nuget@v2
+      uses: nuget/setup-nuget@main
 
     - name: Get references
       shell: pwsh
@@ -48,16 +53,19 @@ jobs:
         Invoke-WebRequest -Uri $env:EXILED_REFERENCES_URL -OutFile $env:GITHUB_WORKSPACE/EXILED/References.zip
         Expand-Archive -Path $env:GITHUB_WORKSPACE/EXILED/References.zip -DestinationPath $env:EXILED_REFERENCES_PATH
 
-    - run: docfx EXILED/docs/docfx.json
+    - name: Build docs with docfx
+      shell: pwsh
+      run: |
+        docfx EXILED/docs/docfx.json
       env:
         EXILED_REFERENCES: ${{ env.EXILED_REFERENCES_PATH }}
 
     - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
+      uses: actions/upload-pages-artifact@main
       with:
         # Upload entire repository
         path: 'EXILED/docs/_site'
 
     - name: Deploy to GitHub Pages
       id: deployment
-      uses: actions/deploy-pages@v4
+      uses: actions/deploy-pages@main

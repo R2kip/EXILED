@@ -14,6 +14,8 @@ namespace Exiled.API.Features
 
     using Exiled.API.Enums;
     using Exiled.API.Features.Attributes;
+    using MapGeneration.Distributors;
+    using MapGeneration.RoomConnectors;
     using Mirror;
     using UnityEngine;
 
@@ -42,11 +44,7 @@ namespace Exiled.API.Features
         /// </summary>
         /// <param name="prefabType">The <see cref="PrefabType"/>.</param>
         /// <returns>The corresponding <see cref="PrefabAttribute"/>.</returns>
-        public static PrefabAttribute GetPrefabAttribute(this PrefabType prefabType)
-        {
-            Type type = prefabType.GetType();
-            return type.GetField(Enum.GetName(type, prefabType)).GetCustomAttribute<PrefabAttribute>();
-        }
+        public static PrefabAttribute GetPrefabAttribute(this PrefabType prefabType) => typeof(PrefabType).GetField(prefabType.ToString()).GetCustomAttribute<PrefabAttribute>();
 
         /// <summary>
         /// Gets the <see cref="GameObject"/> of the specified <see cref="PrefabType"/>.
@@ -55,6 +53,13 @@ namespace Exiled.API.Features
         /// <returns>Returns the <see cref="GameObject"/>.</returns>
         public static GameObject GetPrefab(PrefabType prefabType)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
+            if (prefabType is PrefabType.HCZOneSided or PrefabType.HCZTwoSided)
+#pragma warning restore CS0618 // Type or member is obsolete
+            {
+                prefabType = PrefabType.HCZBreakableDoor;
+            }
+
             if (Prefabs.TryGetValue(prefabType, out (GameObject, Component) prefab))
                 return prefab.Item1;
 
@@ -95,13 +100,48 @@ namespace Exiled.API.Features
         /// <param name="position">The <see cref="Vector3"/> position where the <see cref="GameObject"/> will spawn.</param>
         /// <param name="rotation">The <see cref="Quaternion"/> rotation of the <see cref="GameObject"/>.</param>
         /// <returns>Returns the <see cref="GameObject"/> instantied.</returns>
-        public static GameObject Spawn(PrefabType prefabType, Vector3 position = default, Quaternion? rotation = null)
+        [Obsolete("This method will be removed in Exiled 10 in favour of overload with more parameters")]
+        public static GameObject Spawn(PrefabType prefabType, Vector3 position, Quaternion? rotation) => Spawn(prefabType, position, rotation, true);
+
+        /// <summary>
+        /// Spawns the <see cref="GameObject"/> of the specified <see cref="PrefabType"/>.
+        /// </summary>
+        /// <param name="prefabType">The <see cref="PrefabType"/>.</param>
+        /// <param name="position">The <see cref="Vector3"/> position where the <see cref="GameObject"/> will spawn.</param>
+        /// <param name="rotation">The <see cref="Quaternion"/> rotation of the <see cref="GameObject"/>.</param>
+        /// <param name="spawn">Whether the <see cref="PrefabType"/> should be initially spawned.</param>
+        /// <returns>Returns the <see cref="GameObject"/> instantied.</returns>
+        public static GameObject Spawn(PrefabType prefabType, Vector3 position = default, Quaternion? rotation = null, bool spawn = true)
         {
             if (!TryGetPrefab(prefabType, out GameObject gameObject))
                 return null;
 
-            GameObject newGameObject = UnityEngine.Object.Instantiate(gameObject, position, rotation ?? Quaternion.identity);
-            NetworkServer.Spawn(newGameObject);
+            rotation ??= Quaternion.identity;
+
+            GameObject newGameObject = UnityEngine.Object.Instantiate(gameObject, position, rotation.Value);
+
+            if (newGameObject.TryGetComponent(out StructurePositionSync positionSync))
+            {
+                positionSync.Network_position = position;
+                positionSync.Network_rotationY = (sbyte)Mathf.RoundToInt(rotation.Value.eulerAngles.y / StructurePositionSync.ConversionRate);
+            }
+
+#pragma warning disable CS0618 // Type or member is obsolete
+            if (prefabType is PrefabType.HCZOneSided or PrefabType.HCZTwoSided or PrefabType.HCZBreakableDoor)
+            {
+                newGameObject.GetComponent<WallableSmallNodeRoomConnector>().Network_syncBitmask = prefabType switch
+                {
+                    PrefabType.HCZTwoSided => 0b00000000,
+                    PrefabType.HCZOneSided => 0b00000001,
+                    PrefabType.HCZBreakableDoor => 0b00000011,
+                    _ => 0
+                };
+            }
+#pragma warning restore CS0618 // Type or member is obsolete
+
+            if (spawn)
+                NetworkServer.Spawn(newGameObject);
+
             return newGameObject;
         }
 
@@ -113,11 +153,22 @@ namespace Exiled.API.Features
         /// <param name="rotation">The <see cref="Quaternion"/> rotation of the <see cref="GameObject"/>.</param>
         /// <typeparam name="T">The <see cref="Component"/> type.</typeparam>
         /// <returns>Returns the <see cref="Component"/> of the <see cref="GameObject"/>.</returns>
-        public static T Spawn<T>(PrefabType prefabType, Vector3 position = default, Quaternion? rotation = null)
+        [Obsolete("This method will be removed in Exiled 10 in favour of overload with more parameters")]
+        public static T Spawn<T>(PrefabType prefabType, Vector3 position, Quaternion? rotation)
             where T : Component
-        {
-            GameObject gameObject = Spawn(prefabType, position, rotation);
-            return gameObject?.GetComponent<T>();
-        }
+            => Spawn<T>(prefabType, position, rotation, true);
+
+        /// <summary>
+        /// Spawns the <see cref="GameObject"/> of the specified <see cref="PrefabType"/>.
+        /// </summary>
+        /// <param name="prefabType">The <see cref="PrefabType"/>.</param>
+        /// <param name="position">The <see cref="Vector3"/> position where the <see cref="GameObject"/> will spawn.</param>
+        /// <param name="rotation">The <see cref="Quaternion"/> rotation of the <see cref="GameObject"/>.</param>
+        /// <param name="spawn">Whether the <see cref="PrefabType"/> should be initially spawned.</param>
+        /// <typeparam name="T">The <see cref="Component"/> type.</typeparam>
+        /// <returns>Returns the <see cref="Component"/> of the <see cref="GameObject"/>.</returns>
+        public static T Spawn<T>(PrefabType prefabType, Vector3 position = default, Quaternion? rotation = null, bool spawn = true)
+            where T : Component
+            => Spawn(prefabType, position, rotation, spawn)?.GetComponent<T>();
     }
 }
